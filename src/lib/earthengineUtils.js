@@ -98,7 +98,7 @@ async function getTileUrl(image, vis, region) {
 async function getThumbUrl(image, vis, region, dimensions) {
     return await new Promise((resolve, reject) => {
         image.getThumbURL({
-            dimensions: [dimensions, dimensions],
+            dimensions: dimensions,
             region: region,
             format: 'png',
             min: vis.min,
@@ -399,7 +399,7 @@ export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANC
 
     return await new Promise((resolve, reject) => {
         composite.getThumbURL({
-            dimensions: [dimensions, dimensions],
+            dimensions: dimensions,
             region: clipGeometry,
             format: 'png',
             ...visParams
