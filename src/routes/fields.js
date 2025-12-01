@@ -39,7 +39,7 @@ router.get('/geojson', async (req, res) => {
         const bboxParam = `${minLng},${minLat},${maxLng},${maxLat},EPSG:4326`
         const wfsUrl = `${WFS_BASE_URL}&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetFeature&TYPENAME=PARCEL_VIEW&OUTPUTFORMAT=application/vnd.geo+json&SRSNAME=EPSG:4326&BBOX=${bboxParam}`
         
-        console.log('[API] Fetching from WFS:', wfsUrl)
+        //console.log('[API] Fetching from WFS:', wfsUrl)
         
         const wfsResponse = await fetch(wfsUrl)
         
