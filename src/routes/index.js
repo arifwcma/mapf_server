@@ -1,5 +1,5 @@
 import express from 'express'
-import { getAverageIndexForArea, getAverageIndexTile, getAverageIndexThumbnail } from '../lib/earthengineUtils.js'
+import { getAverageIndexForArea, getAverageIndexTile, getAverageIndexThumbnail, getSatelliteThumbnail } from '../lib/earthengineUtils.js'
 import { getMonthDateRange } from '../lib/dateUtils.js'
 import { DEFAULT_CLOUD_TOLERANCE } from '../lib/config.js'
 import { DEFAULT_INDEX, isValidIndex } from '../lib/indexConfig.js'
@@ -179,6 +179,68 @@ async function handleAverage(req, res) {
         const errorMessage = error?.message || error?.toString() || 'Unknown error'
         if (errorMessage.includes('No images found')) {
             return res.json({ tileUrl: null, thumbUrl: null, index: indexName, error: 'No images found' })
+        }
+        res.status(500).json({ error: errorMessage })
+    }
+}
+
+// Satellite (true-color) thumbnail endpoint
+router.get('/satellite', handleSatellite)
+router.post('/satellite', handleSatellite)
+
+async function handleSatellite(req, res) {
+    let bbox, cloudParam, geometryParam, dimensions
+    
+    if (req.method === 'POST') {
+        const body = req.body
+        bbox = body.bbox
+        cloudParam = body.cloud
+        geometryParam = body.geometry
+        dimensions = body.dimensions
+    } else {
+        bbox = req.query.bbox
+        cloudParam = req.query.cloud
+        geometryParam = req.query.geometry
+        dimensions = req.query.dimensions
+    }
+    
+    const cloud = cloudParam ? parseFloat(cloudParam) : DEFAULT_CLOUD_TOLERANCE
+
+    if (!bbox) {
+        return res.status(400).json({
+            error: 'Missing required parameter: bbox'
+        })
+    }
+
+    if (cloudParam && (isNaN(cloud) || cloud < 0 || cloud > 100)) {
+        return res.status(400).json({
+            error: 'Invalid cloud parameter. Must be a number between 0 and 100'
+        })
+    }
+
+    let geometry = null
+    if (geometryParam) {
+        if (typeof geometryParam === 'string') {
+            try {
+                geometry = JSON.parse(geometryParam)
+            } catch (e) {
+                return res.status(400).json({
+                    error: 'Invalid geometry parameter. Must be valid JSON'
+                })
+            }
+        } else {
+            geometry = geometryParam
+        }
+    }
+
+    try {
+        const dims = dimensions ? parseInt(dimensions, 10) : 256
+        const thumbUrl = await getSatelliteThumbnail(bbox, cloud, geometry, dims)
+        res.json({ thumbUrl })
+    } catch (error) {
+        const errorMessage = error?.message || error?.toString() || 'Unknown error'
+        if (errorMessage.includes('No images found')) {
+            return res.json({ thumbUrl: null, error: 'No images found' })
         }
         res.status(500).json({ error: errorMessage })
     }

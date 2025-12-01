@@ -356,3 +356,64 @@ async function getAverageIndexThumbnailMODIS(start, end, bbox, geometry = null, 
     return await getThumbUrl(mean, INDEX_VIS_CONFIG, rectangle, dimensions)
 }
 
+// True-color satellite thumbnail
+export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANCE, geometry = null, dimensions = 256) {
+    await initEarthEngine()
+
+    const { minLng, minLat, maxLng, maxLat } = parseBbox(bbox)
+    const rectangle = ee.Geometry.Rectangle([minLng, minLat, maxLng, maxLat])
+    const clipGeometry = geometry ? geoJsonToEeGeometry(geometry) : rectangle
+
+    if (!clipGeometry) {
+        throw new Error('Invalid geometry format')
+    }
+
+    // Get recent date range (last 3 months)
+    const now = new Date()
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+    const startDate = ee.Date(threeMonthsAgo.toISOString().split('T')[0])
+    const endDate = ee.Date(now.toISOString().split('T')[0])
+
+    // Get Sentinel-2 true color
+    const collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+        .filterBounds(rectangle)
+        .filterDate(startDate, endDate)
+        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
+        .select(['B4', 'B3', 'B2']) // RGB bands
+
+    const collectionSize = await getCollectionSize(collection)
+
+    if (collectionSize === 0) {
+        throw new Error('No images found')
+    }
+
+    // Create median composite and clip to geometry
+    const composite = collection.median().clip(clipGeometry)
+
+    // True color visualization params
+    const visParams = {
+        min: 0,
+        max: 3000,
+        bands: ['B4', 'B3', 'B2']
+    }
+
+    return await new Promise((resolve, reject) => {
+        composite.getThumbURL({
+            dimensions: [dimensions, dimensions],
+            region: clipGeometry,
+            format: 'png',
+            ...visParams
+        }, (thumbUrl, err) => {
+            if (err) {
+                reject(new Error(err?.message || err?.toString() || 'Failed to generate satellite thumbnail'))
+                return
+            }
+            if (!thumbUrl) {
+                reject(new Error('Thumbnail URL is null'))
+                return
+            }
+            resolve(thumbUrl)
+        })
+    })
+}
+
