@@ -419,6 +419,10 @@ export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANC
 
 // True-color satellite thumbnail with date range
 export async function getSatelliteThumbnailWithDateRange(start, end, bbox, cloud = DEFAULT_CLOUD_TOLERANCE, geometry = null, dimensions = 256) {
+    if (shouldUseMODIS(start)) {
+        return await getSatelliteThumbnailWithDateRangeMODIS(start, end, bbox, geometry, dimensions)
+    }
+
     await initEarthEngine()
 
     const { minLng, minLat, maxLng, maxLat } = parseBbox(bbox)
@@ -463,6 +467,70 @@ export async function getSatelliteThumbnailWithDateRange(start, end, bbox, cloud
         }, (thumbUrl, err) => {
             if (err) {
                 reject(new Error(err?.message || err?.toString() || 'Failed to generate satellite thumbnail'))
+                return
+            }
+            if (!thumbUrl) {
+                reject(new Error('Thumbnail URL is null'))
+                return
+            }
+            resolve(thumbUrl)
+        })
+    })
+}
+
+async function getSatelliteThumbnailWithDateRangeMODIS(start, end, bbox, geometry = null, dimensions = 256) {
+    await initEarthEngine()
+
+    const { minLng, minLat, maxLng, maxLat } = parseBbox(bbox)
+    const rectangle = ee.Geometry.Rectangle([minLng, minLat, maxLng, maxLat])
+    const clipGeometry = geometry ? geoJsonToEeGeometry(geometry) : rectangle
+
+    if (!clipGeometry) {
+        throw new Error('Invalid geometry format')
+    }
+
+    const { startDate, endDate } = createDateRange(start, end)
+
+    // Get MODIS true color (MOD09A1 has surface reflectance bands)
+    // Band 1: Red (620-670nm), Band 4: Green (545-565nm), Band 3: Blue (459-479nm)
+    const collection = ee.ImageCollection('MODIS/061/MOD09A1')
+        .filterBounds(rectangle)
+        .filterDate(startDate, endDate)
+        .map(img => {
+            // Apply cloud mask
+            const qa = img.select('StateQA')
+            const cloudMask = qa.bitwiseAnd(3).eq(0) // Clear sky
+            // Select RGB bands and scale
+            const rgb = img.select(['sur_refl_b01', 'sur_refl_b04', 'sur_refl_b03'])
+                .multiply(0.0001) // Scale factor for reflectance
+            return rgb.updateMask(cloudMask).rename(['Red', 'Green', 'Blue'])
+        })
+
+    const collectionSize = await getCollectionSize(collection)
+
+    if (collectionSize === 0) {
+        throw new Error('No images found')
+    }
+
+    // Create median composite and clip to geometry
+    const composite = collection.median().clip(clipGeometry)
+
+    // True color visualization params for MODIS (reflectance values 0-1 scaled)
+    const visParams = {
+        min: 0,
+        max: 0.3,
+        bands: ['Red', 'Green', 'Blue']
+    }
+
+    return await new Promise((resolve, reject) => {
+        composite.getThumbURL({
+            dimensions: dimensions,
+            region: clipGeometry,
+            format: 'png',
+            ...visParams
+        }, (thumbUrl, err) => {
+            if (err) {
+                reject(new Error(err?.message || err?.toString() || 'Failed to generate MODIS satellite thumbnail'))
                 return
             }
             if (!thumbUrl) {
