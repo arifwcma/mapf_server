@@ -1,8 +1,22 @@
 import express from 'express'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
 const router = express.Router()
 
-const GOOGLE_PLACES_API_KEY = 'AIzaSyBrpYLa4lNPFeAMlOoOZyAxQvf3TZKVEmI'
+// Load API key from sensitive_resources (gitignored)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const apiKeysPath = join(__dirname, '../../sensitive_resources/api_keys.json')
+
+let GOOGLE_PLACES_API_KEY = ''
+try {
+    const apiKeys = JSON.parse(readFileSync(apiKeysPath, 'utf8'))
+    GOOGLE_PLACES_API_KEY = apiKeys.GOOGLE_PLACES_API_KEY || ''
+} catch (e) {
+    console.warn('Warning: Could not load API keys from sensitive_resources/api_keys.json')
+}
 
 // Proxy for Places Autocomplete
 router.get('/autocomplete', async (req, res) => {

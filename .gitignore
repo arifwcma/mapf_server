@@ -1,2 +1,4 @@
 .idea/
 sensitive_resources/
+node_modules/
+.env
