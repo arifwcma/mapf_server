@@ -1,5 +1,5 @@
 import express from 'express'
-import { getAverageIndexForArea, getAverageIndexTile, getAverageIndexThumbnail, getSatelliteThumbnail } from '../lib/earthengineUtils.js'
+import { getAverageIndexForArea, getAverageIndexTile, getAverageIndexThumbnail, getSatelliteThumbnail, getSatelliteThumbnailWithDateRange } from '../lib/earthengineUtils.js'
 import { getMonthDateRange } from '../lib/dateUtils.js'
 import { DEFAULT_CLOUD_TOLERANCE } from '../lib/config.js'
 import { DEFAULT_INDEX, isValidIndex } from '../lib/indexConfig.js'
@@ -189,7 +189,7 @@ router.get('/satellite', handleSatellite)
 router.post('/satellite', handleSatellite)
 
 async function handleSatellite(req, res) {
-    let bbox, cloudParam, geometryParam, dimensions
+    let bbox, cloudParam, geometryParam, dimensions, start, end
     
     if (req.method === 'POST') {
         const body = req.body
@@ -197,11 +197,15 @@ async function handleSatellite(req, res) {
         cloudParam = body.cloud
         geometryParam = body.geometry
         dimensions = body.dimensions
+        start = body.start
+        end = body.end
     } else {
         bbox = req.query.bbox
         cloudParam = req.query.cloud
         geometryParam = req.query.geometry
         dimensions = req.query.dimensions
+        start = req.query.start
+        end = req.query.end
     }
     
     const cloud = cloudParam ? parseFloat(cloudParam) : DEFAULT_CLOUD_TOLERANCE
@@ -235,8 +239,16 @@ async function handleSatellite(req, res) {
 
     try {
         const dims = dimensions ? parseInt(dimensions, 10) : 256
-        const thumbUrl = await getSatelliteThumbnail(bbox, cloud, geometry, dims)
-        res.json({ thumbUrl })
+        
+        // If start and end dates are provided, use date range version
+        if (start && end) {
+            const thumbUrl = await getSatelliteThumbnailWithDateRange(start, end, bbox, cloud, geometry, dims)
+            res.json({ thumbUrl })
+        } else {
+            // Otherwise use default (last 3 months)
+            const thumbUrl = await getSatelliteThumbnail(bbox, cloud, geometry, dims)
+            res.json({ thumbUrl })
+        }
     } catch (error) {
         const errorMessage = error?.message || error?.toString() || 'Unknown error'
         if (errorMessage.includes('No images found')) {
