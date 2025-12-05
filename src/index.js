@@ -6,6 +6,7 @@ import fieldsRouter from './routes/fields.js'
 import indexRouter from './routes/index.js'
 import shareRouter from './routes/share.js'
 import boundaryRouter from './routes/boundary.js'
+import placesRouter from './routes/places.js'
 
 const app = express()
 const PORT = process.env.PORT || 3003
@@ -17,6 +18,7 @@ app.use('/api/fields', fieldsRouter)
 app.use('/api/index', indexRouter)
 app.use('/api/share', shareRouter)
 app.use('/api/boundary', boundaryRouter)
+app.use('/api/places', placesRouter)
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
