@@ -5,7 +5,6 @@ import { dirname, join } from 'path'
 
 const router = express.Router()
 
-// Load API key from sensitive_resources (gitignored)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const apiKeysPath = join(__dirname, '../../sensitive_resources/api_keys.json')
@@ -18,7 +17,6 @@ try {
     console.warn('Warning: Could not load API keys from sensitive_resources/api_keys.json')
 }
 
-// Proxy for Places Autocomplete
 router.get('/autocomplete', async (req, res) => {
     const { input } = req.query
     
@@ -47,7 +45,6 @@ router.get('/autocomplete', async (req, res) => {
     }
 })
 
-// Proxy for Place Details
 router.get('/details', async (req, res) => {
     const { place_id } = req.query
     

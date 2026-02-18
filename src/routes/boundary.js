@@ -8,7 +8,6 @@ const router = express.Router()
 
 let boundaryData = null
 
-// Load boundary on startup
 try {
     const boundaryPath = join(__dirname, '../../data/boundary.geojson')
     boundaryData = JSON.parse(readFileSync(boundaryPath, 'utf8'))
@@ -24,21 +23,18 @@ router.get('/', (req, res) => {
     res.json(boundaryData)
 })
 
-// Return just the bounding box
 router.get('/bounds', (req, res) => {
     if (!boundaryData) {
         return res.status(500).json({ error: 'Boundary data not loaded' })
     }
     
     try {
-        // Calculate bounds from the MultiPolygon
         const feature = boundaryData.features[0]
         const coordinates = feature.geometry.coordinates
         
         let minLng = Infinity, maxLng = -Infinity
         let minLat = Infinity, maxLat = -Infinity
         
-        // Traverse MultiPolygon coordinates
         for (const polygon of coordinates) {
             for (const ring of polygon) {
                 for (const coord of ring) {

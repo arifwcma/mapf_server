@@ -184,7 +184,6 @@ async function handleAverage(req, res) {
     }
 }
 
-// Satellite (true-color) thumbnail endpoint
 router.get('/satellite', handleSatellite)
 router.post('/satellite', handleSatellite)
 
@@ -240,12 +239,10 @@ async function handleSatellite(req, res) {
     try {
         const dims = dimensions ? parseInt(dimensions, 10) : 256
         
-        // If start and end dates are provided, use date range version
         if (start && end) {
             const thumbUrl = await getSatelliteThumbnailWithDateRange(start, end, bbox, cloud, geometry, dims)
             res.json({ thumbUrl })
         } else {
-            // Otherwise use default (last 3 months)
             const thumbUrl = await getSatelliteThumbnail(bbox, cloud, geometry, dims)
             res.json({ thumbUrl })
         }

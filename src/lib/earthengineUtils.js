@@ -356,7 +356,6 @@ async function getAverageIndexThumbnailMODIS(start, end, bbox, geometry = null, 
     return await getThumbUrl(mean, INDEX_VIS_CONFIG, rectangle, dimensions)
 }
 
-// True-color satellite thumbnail
 export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANCE, geometry = null, dimensions = 256) {
     await initEarthEngine()
 
@@ -368,18 +367,16 @@ export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANC
         throw new Error('Invalid geometry format')
     }
 
-    // Get recent date range (last 3 months)
     const now = new Date()
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1)
     const startDate = ee.Date(threeMonthsAgo.toISOString().split('T')[0])
     const endDate = ee.Date(now.toISOString().split('T')[0])
 
-    // Get Sentinel-2 true color
     const collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
         .filterBounds(rectangle)
         .filterDate(startDate, endDate)
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
-        .select(['B4', 'B3', 'B2']) // RGB bands
+        .select(['B4', 'B3', 'B2'])
 
     const collectionSize = await getCollectionSize(collection)
 
@@ -387,10 +384,8 @@ export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANC
         throw new Error('No images found')
     }
 
-    // Create median composite and clip to geometry
     const composite = collection.median().clip(clipGeometry)
 
-    // True color visualization params
     const visParams = {
         min: 0,
         max: 3000,
@@ -417,7 +412,6 @@ export async function getSatelliteThumbnail(bbox, cloud = DEFAULT_CLOUD_TOLERANC
     })
 }
 
-// True-color satellite thumbnail with date range
 export async function getSatelliteThumbnailWithDateRange(start, end, bbox, cloud = DEFAULT_CLOUD_TOLERANCE, geometry = null, dimensions = 256) {
     if (shouldUseMODIS(start)) {
         return await getSatelliteThumbnailWithDateRangeMODIS(start, end, bbox, geometry, dimensions)
@@ -435,12 +429,11 @@ export async function getSatelliteThumbnailWithDateRange(start, end, bbox, cloud
 
     const { startDate, endDate } = createDateRange(start, end)
 
-    // Get Sentinel-2 true color
     const collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
         .filterBounds(rectangle)
         .filterDate(startDate, endDate)
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
-        .select(['B4', 'B3', 'B2']) // RGB bands
+        .select(['B4', 'B3', 'B2'])
 
     const collectionSize = await getCollectionSize(collection)
 
@@ -448,10 +441,8 @@ export async function getSatelliteThumbnailWithDateRange(start, end, bbox, cloud
         throw new Error('No images found')
     }
 
-    // Create median composite and clip to geometry
     const composite = collection.median().clip(clipGeometry)
 
-    // True color visualization params
     const visParams = {
         min: 0,
         max: 3000,
@@ -491,18 +482,14 @@ async function getSatelliteThumbnailWithDateRangeMODIS(start, end, bbox, geometr
 
     const { startDate, endDate } = createDateRange(start, end)
 
-    // Get MODIS true color (MOD09A1 has surface reflectance bands)
-    // Band 1: Red (620-670nm), Band 4: Green (545-565nm), Band 3: Blue (459-479nm)
     const collection = ee.ImageCollection('MODIS/061/MOD09A1')
         .filterBounds(rectangle)
         .filterDate(startDate, endDate)
         .map(img => {
-            // Apply cloud mask
             const qa = img.select('StateQA')
-            const cloudMask = qa.bitwiseAnd(3).eq(0) // Clear sky
-            // Select RGB bands and scale
+            const cloudMask = qa.bitwiseAnd(3).eq(0)
             const rgb = img.select(['sur_refl_b01', 'sur_refl_b04', 'sur_refl_b03'])
-                .multiply(0.0001) // Scale factor for reflectance
+                .multiply(0.0001)
             return rgb.updateMask(cloudMask).rename(['Red', 'Green', 'Blue'])
         })
 
@@ -512,10 +499,8 @@ async function getSatelliteThumbnailWithDateRangeMODIS(start, end, bbox, geometr
         throw new Error('No images found')
     }
 
-    // Create median composite and clip to geometry
     const composite = collection.median().clip(clipGeometry)
 
-    // True color visualization params for MODIS (reflectance values 0-1 scaled)
     const visParams = {
         min: 0,
         max: 0.3,

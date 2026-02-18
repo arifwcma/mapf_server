@@ -26,7 +26,7 @@ export async function initEarthEngine() {
                 initialized = true
                 resolve()
             }, reject)
-        })
+        }, reject)
     })
 }
 
