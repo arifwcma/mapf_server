@@ -18,5 +18,5 @@ export const DEFAULT_CLOUD_TOLERANCE = 50
 
 export const FIELD_SELECTION_MIN_ZOOM = 13
 
-export const WFS_BASE_URL = 'http://testpozi.online/cgi-bin/qgis_mapserv.fcgi?MAP=/var/www/qgis_projects/wimmera_parcels/wimmera_parcels.qgz'
+export const WFS_BASE_URL = 'https://wimmera.xyz/qgis/?MAP=/srv/data/wimmera_parcels/wimmera_parcels.qgz'
 
